@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+
+import sys
+import yaml
+import getopt
+from subprocess import check_call
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+def main(argv):
+    silent = muteNonExisting = muteMissingFile = False
+    try:
+        opts, args = getopt.getopt(argv,"hsmf",["skip-errors", "mute-non-existing", "mute-missing-file"])
+    except getopt.GetoptError:
+        print 'jenkins-yaml.runner [--skip-errors] [--mute-non-existing] [--mute-missing-file] <section>'
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt in ("-h","--help"):
+            print 'jenkins-yaml.runner [--skip-errors] [--mute-non-existing] [--mute-missing-file] <section>'
+            sys.exit(2)
+        elif opt in ("-s","--skip-errors"):
+            print "Continue even though previous line exited with code >0"
+            silent = True
+        elif opt in ("-m","--mute-non-existing"):
+            print "Exit with code 0 even if section does not exist"
+            muteNonExisting = True
+        elif opt in ("-f","--mute-missing-file"):
+            print "Exit with code 0 even if file does not exist"
+            muteMissingFile = True
+
+    try:
+        section = args[0]
+    except IndexError:
+        print bcolors.FAIL + 'Missing argument' + bcolors.ENDC
+        sys.exit(1)
+
+    try:
+        with open(".jenkins.yml", 'r') as stream:
+            config = yaml.load(stream)
+    except yaml.YAMLError as exc:
+        print bcolors.FAIL + 'Invalid YAML syntax' + bcolors.ENDC
+        sys.exit(1)
+    except IOError as exc:
+        print bcolors.FAIL + 'Missing YAML file' + bcolors.ENDC
+        if muteMissingFile:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+    try:
+        steps = config[section]
+    except KeyError:
+        print bcolors.FAIL + 'Section is missing:', str(section) + bcolors.ENDC
+        if muteMissingFile:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+    print bcolors.HEADER + 'Running section:', str(section) + bcolors.ENDC
+
+    if silent:
+        for step in steps:
+            try:
+                print bcolors.BOLD + '>> Step:', str(step) + bcolors.ENDC
+                check_call(step, shell=True)
+                print bcolors.OKGREEN + '>> Finished' + bcolors.ENDC
+            except Exception, e:
+                print bcolors.FAIL
+                print(e)
+                print bcolors.ENDC
+    else:
+        try:
+            for step in steps:
+                print bcolors.BOLD + '>> Step:', str(step) + bcolors.ENDC
+                check_call(step, shell=True)
+                print bcolors.OKGREEN + '>> Finished' + bcolors.ENDC
+        except Exception, e:
+            print bcolors.FAIL
+            print(e)
+            print bcolors.ENDC
+            sys.exit(1)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
