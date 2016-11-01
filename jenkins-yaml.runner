@@ -16,23 +16,23 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 def main(argv):
-    silent = muteNonExisting = muteMissingFile = False
+    muteErrors = muteMissingSection = muteMissingFile = False
     try:
-        opts, args = getopt.getopt(argv,"hsmf",["skip-errors", "mute-non-existing", "mute-missing-file"])
+        opts, args = getopt.getopt(argv,"hesf",["errors", "missing-section", "missing-file"])
     except getopt.GetoptError:
-        print 'jenkins-yaml.runner [--skip-errors] [--mute-non-existing] [--mute-missing-file] <section>'
+        print 'jenkins-yaml.runner [--errors] [--missing-section] [--missing-file] <section>'
         sys.exit(2)
     for opt, arg in opts:
         if opt in ("-h","--help"):
-            print 'jenkins-yaml.runner [--skip-errors] [--mute-non-existing] [--mute-missing-file] <section>'
+            print 'jenkins-yaml.runner [--errors] [--missing-section] [--missing-file] <section>'
             sys.exit(2)
-        elif opt in ("-s","--skip-errors"):
-            print "Continue even though previous line exited with code >0"
-            silent = True
-        elif opt in ("-m","--mute-non-existing"):
+        elif opt in ("-e","--errors"):
+            print "Continue even though previous line exited with code > 0"
+            muteErrors = True
+        elif opt in ("-s","--missing-section"):
             print "Exit with code 0 even if section does not exist"
-            muteNonExisting = True
-        elif opt in ("-f","--mute-missing-file"):
+            muteMissingSection = True
+        elif opt in ("-f","--missing-file"):
             print "Exit with code 0 even if file does not exist"
             muteMissingFile = True
 
@@ -66,7 +66,7 @@ def main(argv):
 
     print bcolors.HEADER + 'Running section:', str(section) + bcolors.ENDC
 
-    if silent:
+    if muteErrors:
         for step in steps:
             try:
                 print bcolors.BOLD + '>> Step:', str(step) + bcolors.ENDC
